@@ -11,6 +11,7 @@ echo "=== Building and Installing DM Theme Changer ==="
 echo "Cleaning old build files..."
 rm -rf ./out/*
 rm -rf ./schemas/*.compiled
+rm -f ./*.zip
 
 # 2. Compile schemas
 echo "Compiling GSettings schemas..."
@@ -33,9 +34,9 @@ cp -r ./out/"$UUID"/* "$EXTENSION_DIR/"
 
 # 5. Pack zip
 echo "Creating zip package..."
-if cd out; then
-  zip -r "../$UUID.zip" "$UUID" > /dev/null
-  cd ..
+if cd "out/$UUID"; then
+  zip -r "../../$UUID.zip" . > /dev/null
+  cd ../..
 fi
 
 echo "=== Installation Completed Successfully! ==="
