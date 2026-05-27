@@ -1,8 +1,13 @@
 import GLib from "gi://GLib";
 import Gio from "gi://Gio";
+import St from "gi://St";
+import Meta from "gi://Meta";
+import Shell from "gi://Shell";
 
-import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
+import { Extension, gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
+import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 import { getDirs, getModeThemeDirs } from "./utils.js";
 import { OptimizeTransition } from "./others/darkLightSwitch.js";
@@ -53,9 +58,26 @@ export default class DmThemeChanger extends Extension {
     this._fetchAllSettings();
     this._changeAllTheme();
     this._handleExternalShellThemeChanged();
+
+    // Register custom keybinding to toggle theme
+    Main.wm.addKeybinding(
+      "toggle-theme-shortcut",
+      this._settings,
+      Meta.KeyBindingFlags.NONE,
+      Shell.ActionMode.ALL,
+      this._toggleDarkMode.bind(this)
+    );
+
+    // Show indicator if enabled
+    if (this._settings.get_boolean("show-indicator")) {
+      this._createIndicator();
+    }
   }
 
   disable() {
+    Main.wm.removeKeybinding("toggle-theme-shortcut");
+
+    this._destroyIndicator();
     this._destroyExternalShellThemeHandler();
 
     this.optimizeTransition.disable();
@@ -77,6 +99,10 @@ export default class DmThemeChanger extends Extension {
     this.optimizeTransition.inProgress = true;
 
     const isDm = this.getDarkMode();
+
+    if (this._darkModeMenuItem) {
+      this._darkModeMenuItem.setToggleState(isDm);
+    }
 
     this._changeGtk3Theme(isDm ? GTK3_THEME_DARK : GTK3_THEME_LIGHT);
     this._changeShellTheme(isDm ? SHELL_THEME_DARK : SHELL_THEME_LIGHT);
@@ -344,6 +370,14 @@ export default class DmThemeChanger extends Extension {
 
       if (key === "darklight-transition-duration")
         this.optimizeTransition.setTransitionDuration(this._settings.get_int(key));
+
+      if (key === "show-indicator") {
+        if (this._settings.get_boolean("show-indicator")) {
+          this._createIndicator();
+        } else {
+          this._destroyIndicator();
+        }
+      }
       this._sourceIds.SettingsWriteTimeout = 0;
       return GLib.SOURCE_REMOVE;
     });
@@ -399,5 +433,61 @@ export default class DmThemeChanger extends Extension {
   //Utils
   getDarkMode() {
     return this._interfaceSettings.get_string("color-scheme") === "prefer-dark";
+  }
+
+  _toggleDarkMode() {
+    const isDm = this.getDarkMode();
+    this._interfaceSettings.set_string(
+      "color-scheme",
+      isDm ? "default" : "prefer-dark"
+    );
+  }
+
+  _createIndicator() {
+    if (this._indicator) return;
+
+    // Create indicator button in panel
+    this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
+
+    // Create symbolic icon
+    const icon = new St.Icon({
+      gicon: new Gio.ThemedIcon({ name: "preferences-desktop-theme-symbolic" }),
+      style_class: "system-status-icon",
+    });
+    this._indicator.add_child(icon);
+
+    // Add Dark Mode Toggle menu item
+    this._darkModeMenuItem = new PopupMenu.PopupSwitchMenuItem(
+      _("Dark Mode"),
+      this.getDarkMode()
+    );
+    this._darkModeMenuItem.connect("toggled", (item, state) => {
+      this._interfaceSettings.set_string(
+        "color-scheme",
+        state ? "prefer-dark" : "default"
+      );
+    });
+    this._indicator.menu.addMenuItem(this._darkModeMenuItem);
+
+    // Add separator
+    this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+    // Add Preferences/Settings item
+    const settingsMenuItem = new PopupMenu.PopupMenuItem(_("Settings"));
+    settingsMenuItem.connect("activate", () => {
+      this.openPreferences();
+    });
+    this._indicator.menu.addMenuItem(settingsMenuItem);
+
+    // Add indicator to the panel right status area
+    Main.panel.addToStatusArea(this.uuid, this._indicator);
+  }
+
+  _destroyIndicator() {
+    if (this._indicator) {
+      this._indicator.destroy();
+      this._indicator = null;
+    }
+    this._darkModeMenuItem = null;
   }
 }

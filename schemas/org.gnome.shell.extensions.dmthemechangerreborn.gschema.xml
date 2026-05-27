@@ -88,5 +88,15 @@
       <summary>Lockscreen wallpaper in dark mode</summary>
       <description>File path or URI for the lockscreen wallpaper in dark mode.</description>
     </key>
+    <key name="show-indicator" type="b">
+      <default>true</default>
+      <summary>Show status indicator</summary>
+      <description>Show a status indicator icon in the system panel.</description>
+    </key>
+    <key name="toggle-theme-shortcut" type="as">
+      <default>['&lt;Super&gt;y']</default>
+      <summary>Shortcut to toggle dark mode</summary>
+      <description>Keyboard shortcut to toggle between light and dark modes.</description>
+    </key>
   </schema>
 </schemalist>

@@ -3,6 +3,7 @@ import Gio from "gi://Gio";
 import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
 import GLib from "gi://GLib";
+import Gdk from "gi://Gdk";
 
 import { collectAllThemes } from "./utils.js";
 
@@ -155,6 +156,22 @@ export default class DmThemeChangerPrefs extends ExtensionPreferences {
     optimzeTransition.add_row(transitionDuration);
     optimzeTransition.add_row(clickDelay);
     group.add(optimzeTransition);
+
+    const showIndicator = buildSwitchRow({
+      title: _("Show System Bar Icon"),
+      subtitle: _("Show a shortcut icon in the top system panel to easily toggle themes and open settings"),
+      active: this._settings.get_boolean("show-indicator"),
+      bind: [this._settings, "show-indicator"],
+    });
+    group.add(showIndicator);
+
+    const toggleShortcut = buildShortcutRow({
+      title: _("Keyboard Shortcut"),
+      subtitle: _("Customize the keyboard shortcut to quickly toggle the theme"),
+      bind: [this._settings, "toggle-theme-shortcut"],
+    });
+    group.add(toggleShortcut);
+
     return group;
   }
 
@@ -485,4 +502,105 @@ function buildSwitchRow(
     opts.bind[0].bind(opts.bind[1], switchRow, "active", Gio.SettingsBindFlags.DEFAULT);
 
   return switchRow;
+}
+
+function buildShortcutRow(
+  opts = {
+    title: "Keyboard Shortcut",
+    subtitle: null,
+    bind: null,
+  }
+) {
+  const settings = opts.bind[0];
+  const key = opts.bind[1];
+
+  const row = new Adw.ActionRow({
+    title: opts.title,
+    subtitle: opts.subtitle || null,
+  });
+
+  const shortcutLabel = new Adw.ShortcutLabel({
+    valign: Gtk.Align.CENTER,
+  });
+
+  const button = new Gtk.Button({
+    valign: Gtk.Align.CENTER,
+  });
+
+  const clearButton = new Gtk.Button({
+    icon_name: "edit-clear-symbolic",
+    valign: Gtk.Align.CENTER,
+    tooltip_text: _("Clear Shortcut"),
+  });
+
+  const box = new Gtk.Box({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    spacing: 6,
+    valign: Gtk.Align.CENTER,
+  });
+
+  box.append(shortcutLabel);
+  box.append(button);
+  box.append(clearButton);
+  row.add_suffix(box);
+
+  const updateUI = () => {
+    const shortcutArray = settings.get_strv(key);
+    const shortcutStr = shortcutArray.length > 0 ? shortcutArray[0] : "";
+    if (shortcutStr && shortcutStr !== "") {
+      shortcutLabel.set_accelerator(shortcutStr);
+      button.set_label(_("Edit"));
+      clearButton.set_sensitive(true);
+    } else {
+      shortcutLabel.set_accelerator("");
+      button.set_label(_("Set Shortcut"));
+      clearButton.set_sensitive(false);
+    }
+  };
+
+  updateUI();
+  settings.connect(`changed::${key}`, () => updateUI());
+
+  clearButton.connect("clicked", () => {
+    settings.set_strv(key, []);
+  });
+
+  let controller = null;
+
+  button.connect("clicked", () => {
+    button.set_label(_("Press keys..."));
+    button.set_sensitive(false);
+    clearButton.set_sensitive(false);
+
+    controller = Gtk.EventControllerKey.new();
+    button.add_controller(controller);
+
+    controller.connect("key-pressed", (ctrl, keyval, keycode, state) => {
+      const mask = state & Gtk.accelerator_get_default_mod_mask();
+
+      if (
+        keyval === Gdk.KEY_Super_L || keyval === Gdk.KEY_Super_R ||
+        keyval === Gdk.KEY_Control_L || keyval === Gdk.KEY_Control_R ||
+        keyval === Gdk.KEY_Alt_L || keyval === Gdk.KEY_Alt_R ||
+        keyval === Gdk.KEY_Shift_L || keyval === Gdk.KEY_Shift_R
+      ) {
+        return Gdk.EVENT_PROPAGATE;
+      }
+
+      const accelerator = Gtk.accelerator_name(keyval, mask);
+      
+      if (accelerator) {
+        settings.set_strv(key, [accelerator]);
+      }
+
+      button.remove_controller(controller);
+      controller = null;
+      button.set_sensitive(true);
+      updateUI();
+
+      return Gdk.EVENT_STOP;
+    });
+  });
+
+  return row;
 }
