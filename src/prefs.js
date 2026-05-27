@@ -2,6 +2,7 @@ import GObject from "gi://GObject";
 import Gio from "gi://Gio";
 import Adw from "gi://Adw";
 import Gtk from "gi://Gtk";
+import GLib from "gi://GLib";
 
 import { collectAllThemes } from "./utils.js";
 
@@ -14,15 +15,27 @@ export default class DmThemeChangerPrefs extends ExtensionPreferences {
   fillPreferencesWindow(window) {
     this._settings = this.getSettings();
 
-    const generalPage = new Adw.PreferencesPage();
-    window.add(generalPage);
+    const themesPage = new Adw.PreferencesPage({
+      title: _("Themes & Commands"),
+      icon_name: "preferences-desktop-theme-symbolic",
+    });
+    window.add(themesPage);
+
+    const wallpapersPage = new Adw.PreferencesPage({
+      title: _("Wallpapers"),
+      icon_name: "folder-pictures-symbolic",
+    });
+    window.add(wallpapersPage);
 
     collectAllThemes().then((themes) => {
       this._themes = themes;
 
-      generalPage.add(this._lightModeGroup());
-      generalPage.add(this._darkModeGroup());
-      generalPage.add(this._otherGroup());
+      themesPage.add(this._lightModeGroup());
+      themesPage.add(this._darkModeGroup());
+      themesPage.add(this._otherGroup());
+      themesPage.add(this._customCommandsGroup());
+
+      this._setupWallpapersPage(wallpapersPage, window);
     });
 
     window.connect("close-request", () => {
@@ -144,6 +157,111 @@ export default class DmThemeChangerPrefs extends ExtensionPreferences {
     group.add(optimzeTransition);
     return group;
   }
+
+  _customCommandsGroup() {
+    const group = new Adw.PreferencesGroup({
+      title: _("Custom Commands"),
+      description: _("Run custom shell commands when the theme switches. Perfect for syncing terminal, VS Code, Discord, or other application themes."),
+    });
+
+    const runCommandsSwitch = buildExpanderRow({
+      title: _("Enable Custom Commands"),
+      subtitle: _("Execute custom shell commands on theme changes"),
+      active: this._settings.get_boolean("run-custom-commands"),
+      show_switch: true,
+      bind: [this._settings, "run-custom-commands"],
+    });
+
+    const lightCommandEntry = buildEntryRow({
+      title: _("Light Mode Command"),
+      bind: [this._settings, "custom-command-light"],
+    });
+
+    const darkCommandEntry = buildEntryRow({
+      title: _("Dark Mode Command"),
+      bind: [this._settings, "custom-command-dark"],
+    });
+
+    runCommandsSwitch.add_row(lightCommandEntry);
+    runCommandsSwitch.add_row(darkCommandEntry);
+    group.add(runCommandsSwitch);
+    return group;
+  }
+
+  _setupWallpapersPage(page, window) {
+    const bgSettings = new Gio.Settings({
+      schema: "org.gnome.desktop.background",
+    });
+
+    // Group 1: Desktop Background
+    const desktopGroup = new Adw.PreferencesGroup({
+      title: _("Desktop Wallpaper"),
+      description: _("Select separate custom wallpapers for light and dark modes."),
+    });
+
+    const lightDesktopRow = buildFileChooserRow({
+      title: _("Light Mode Wallpaper"),
+      bind: [bgSettings, "picture-uri"],
+      window: window,
+    });
+
+    const darkDesktopRow = buildFileChooserRow({
+      title: _("Dark Mode Wallpaper"),
+      bind: [bgSettings, "picture-uri-dark"],
+      window: window,
+    });
+
+    desktopGroup.add(lightDesktopRow);
+    desktopGroup.add(darkDesktopRow);
+    page.add(desktopGroup);
+
+    // Group 2: Lockscreen Background
+    const lockscreenGroup = new Adw.PreferencesGroup({
+      title: _("Lockscreen Wallpaper"),
+      description: _("Configure lockscreen wallpapers to sync with the theme."),
+    });
+
+    const syncLockscreenSwitch = buildExpanderRow({
+      title: _("Sync Lockscreen Wallpaper"),
+      subtitle: _("Automatically change lockscreen wallpaper on theme switch"),
+      active: this._settings.get_boolean("sync-lockscreen-wallpaper"),
+      show_switch: true,
+      bind: [this._settings, "sync-lockscreen-wallpaper"],
+    });
+
+    const useDesktopWallpaperSwitch = buildSwitchRow({
+      title: _("Use Desktop Wallpaper"),
+      subtitle: _("Use the same wallpaper configured for the desktop on the lockscreen"),
+      active: this._settings.get_boolean("lockscreen-use-desktop-wallpaper"),
+      bind: [this._settings, "lockscreen-use-desktop-wallpaper"],
+    });
+
+    const lightLockscreenRow = buildFileChooserRow({
+      title: _("Light Mode Lockscreen"),
+      bind: [this._settings, "lockscreen-wallpaper-light"],
+      window: window,
+    });
+
+    const darkLockscreenRow = buildFileChooserRow({
+      title: _("Dark Mode Lockscreen"),
+      bind: [this._settings, "lockscreen-wallpaper-dark"],
+      window: window,
+    });
+
+    const updateSensitivity = () => {
+      let useDesktop = this._settings.get_boolean("lockscreen-use-desktop-wallpaper");
+      lightLockscreenRow.set_sensitive(!useDesktop);
+      darkLockscreenRow.set_sensitive(!useDesktop);
+    };
+    this._settings.connect("changed::lockscreen-use-desktop-wallpaper", () => updateSensitivity());
+    updateSensitivity();
+
+    syncLockscreenSwitch.add_row(useDesktopWallpaperSwitch);
+    syncLockscreenSwitch.add_row(lightLockscreenRow);
+    syncLockscreenSwitch.add_row(darkLockscreenRow);
+    lockscreenGroup.add(syncLockscreenSwitch);
+    page.add(lockscreenGroup);
+  }
 }
 
 export const DropdownItems = GObject.registerClass(
@@ -257,4 +375,114 @@ function buildSpinRow(
     opts.bind[0].bind(opts.bind[1], adjustment, "value", Gio.SettingsBindFlags.DEFAULT);
 
   return spinRow;
+}
+
+function buildEntryRow(
+  opts = {
+    title: "Untitled EntryRow",
+    bind: null,
+  }
+) {
+  const entryRow = new Adw.EntryRow({
+    title: opts.title,
+  });
+
+  if (opts.bind)
+    opts.bind[0].bind(opts.bind[1], entryRow, "text", Gio.SettingsBindFlags.DEFAULT);
+
+  return entryRow;
+}
+
+function buildFileChooserRow(
+  opts = {
+    title: "Select File",
+    bind: null,
+    window: null,
+  }
+) {
+  const row = new Adw.ActionRow({
+    title: opts.title,
+    subtitle: _("No file selected"),
+  });
+
+  const button = new Gtk.Button({
+    icon_name: "document-open-symbolic",
+    valign: Gtk.Align.CENTER,
+  });
+  row.add_suffix(button);
+
+  const settings = opts.bind ? opts.bind[0] : null;
+  const key = opts.bind ? opts.bind[1] : null;
+
+  const updateSubtitle = () => {
+    if (settings && key) {
+      let val = settings.get_string(key);
+      if (val && val.trim() !== "") {
+        try {
+          let displayPath = val.startsWith("file://")
+            ? decodeURIComponent(val.substring(7))
+            : val;
+          row.set_subtitle(displayPath);
+        } catch (e) {
+          row.set_subtitle(val);
+        }
+      } else {
+        row.set_subtitle(_("No file selected"));
+      }
+    }
+  };
+
+  updateSubtitle();
+
+  if (settings && key) {
+    settings.connect(`changed::${key}`, () => updateSubtitle());
+  }
+
+  button.connect("clicked", () => {
+    const fileDialog = new Gtk.FileDialog({
+      title: opts.title,
+      modal: true,
+    });
+
+    const filter = new Gtk.FileFilter();
+    filter.set_name(_("Images"));
+    filter.add_mime_type("image/*");
+    const filters = new Gio.ListStore({ item_type: Gtk.FileFilter });
+    filters.append(filter);
+    fileDialog.set_filters(filters);
+
+    fileDialog.open(opts.window, null, (dialog, res) => {
+      try {
+        const file = dialog.open_finish(res);
+        const uri = file.get_uri();
+        if (settings && key) {
+          settings.set_string(key, uri);
+        }
+      } catch (e) {
+        // User cancelled or error
+      }
+    });
+  });
+
+  return row;
+}
+
+function buildSwitchRow(
+  opts = {
+    title: "Untitled SwitchRow",
+    subtitle: null,
+    active: false,
+    bind: null,
+  }
+) {
+  const switchRow = new Adw.SwitchRow({
+    title: opts.title,
+    subtitle: opts.subtitle || null,
+    active: opts.active,
+  });
+
+  if (opts.bind)
+    opts.bind[0].bind(opts.bind[1], switchRow, "active", Gio.SettingsBindFlags.DEFAULT);
+
+  return switchRow;
 }

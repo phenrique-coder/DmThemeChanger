@@ -67,6 +67,8 @@ export default class DmThemeChanger extends Extension {
     this._sourceIds = null;
     this._settings = null;
     this._interfaceSettings = null;
+    this._screensaverSettings = null;
+    this._backgroundSettings = null;
     this.optimizeTransition = null;
   }
 
@@ -93,6 +95,77 @@ export default class DmThemeChanger extends Extension {
       this._sourceIds.changeIconsDelayTimeout = 0;
       return GLib.SOURCE_REMOVE;
     });
+
+    this._runCustomCommands(isDm);
+    this._syncLockscreenWallpaper(isDm);
+  }
+
+  _runCustomCommands(isDm) {
+    if (!this._settings.get_boolean("run-custom-commands"))
+      return;
+
+    const command = isDm
+      ? this._settings.get_string("custom-command-dark")
+      : this._settings.get_string("custom-command-light");
+
+    if (!command || command.trim() === "")
+      return;
+
+    try {
+      const proc = Gio.Subprocess.new(
+        ['/bin/sh', '-c', command],
+        Gio.SubprocessFlags.NONE
+      );
+      proc.init(null);
+      proc.wait_async(null, (p, res) => {
+        try {
+          p.wait_finish(res);
+        } catch (e) {
+          console.error(`[DM Theme Changer] Custom command failed: ${e.message}`);
+        }
+      });
+    } catch (e) {
+      console.error(`[DM Theme Changer] Error spawning custom command: ${e.message}`);
+    }
+  }
+
+  _syncLockscreenWallpaper(isDm) {
+    if (!this._settings.get_boolean("sync-lockscreen-wallpaper"))
+      return;
+
+    let uri = "";
+    if (this._settings.get_boolean("lockscreen-use-desktop-wallpaper")) {
+      try {
+        if (!this._backgroundSettings) {
+          this._backgroundSettings = new Gio.Settings({
+            schema: "org.gnome.desktop.background",
+          });
+        }
+        uri = isDm
+          ? this._backgroundSettings.get_string("picture-uri-dark")
+          : this._backgroundSettings.get_string("picture-uri");
+      } catch (e) {
+        console.error(`[DM Theme Changer] Error reading desktop wallpaper keys: ${e.message}`);
+      }
+    } else {
+      uri = isDm
+        ? this._settings.get_string("lockscreen-wallpaper-dark")
+        : this._settings.get_string("lockscreen-wallpaper-light");
+    }
+
+    if (!uri || uri.trim() === "")
+      return;
+
+    try {
+      if (!this._screensaverSettings) {
+        this._screensaverSettings = new Gio.Settings({
+          schema: "org.gnome.desktop.screensaver",
+        });
+      }
+      this._screensaverSettings.set_string("picture-uri", uri);
+    } catch (e) {
+      console.error(`[DM Theme Changer] Error syncing lockscreen wallpaper: ${e.message}`);
+    }
   }
 
   _changeShellTheme(themeName) {
