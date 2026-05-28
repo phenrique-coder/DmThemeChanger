@@ -6,9 +6,17 @@ Hope you guys like it...
 
 Automatically change theme styles when dark mode is enabled or disabled.
 
-## Screenshot
+## Screenshots
 
-![preferences](https://raw.githubusercontent.com/phenrique-coder/DmThemeChanger/master/resources/screenshots/preview.png)
+### Themes & Commands Settings
+| Light Mode | Dark Mode |
+| --- | --- |
+| ![Preferences Light](images/config_ligth.png) | ![Preferences Dark](images/config_dark.png) |
+
+### Wallpapers Settings
+| Light Mode | Dark Mode |
+| --- | --- |
+| ![Wallpapers Light](images/wallpapers_ligth.png) | ![Wallpapers Dark](images/wallpapers_dark.png) |
 
 # Installation
 
