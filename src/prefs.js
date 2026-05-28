@@ -12,7 +12,7 @@ import {
   gettext as _,
 } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 
-export default class DmThemeChangerPrefs extends ExtensionPreferences {
+export default class DmThemeChangerRebornPrefs extends ExtensionPreferences {
   fillPreferencesWindow(window) {
     this._settings = this.getSettings();
 

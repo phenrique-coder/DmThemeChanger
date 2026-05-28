@@ -1,7 +1,8 @@
 {
   "name": "DM Theme Changer Reborn",
   "description": "Automatically change theme styles when dark mode is enabled or disabled.",
-  "version": "3.0.1",
+  "version": 6,
+  "version-name": "1.0.0",
   "uuid": "dm-theme-changer-reborn@phenrique-coder.github.com",
   "shell-version": ["46", "47", "48", "49", "50"],
   "url": "https://github.com/phenrique-coder/DmThemeChanger",

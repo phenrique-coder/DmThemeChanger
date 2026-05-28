@@ -25,7 +25,7 @@ let GTK3_THEME_DARK;
 
 let OPTIMIZE_DARKLIGHT_SWITCH_TRANSITION;
 
-export default class DmThemeChanger extends Extension {
+export default class DmThemeChangerReborn extends Extension {
   enable() {
     //get all settings
     this._settings = this.getSettings();
@@ -207,11 +207,11 @@ export default class DmThemeChanger extends Extension {
         try {
           p.wait_finish(res);
         } catch (e) {
-          console.error(`[DM Theme Changer] Custom command failed: ${e.message}`);
+          console.error(`[DM Theme Changer Reborn] Custom command failed: ${e.message}`);
         }
       });
     } catch (e) {
-      console.error(`[DM Theme Changer] Error spawning custom command: ${e.message}`);
+      console.error(`[DM Theme Changer Reborn] Error spawning custom command: ${e.message}`);
     }
   }
 
@@ -231,7 +231,7 @@ export default class DmThemeChanger extends Extension {
           ? this._backgroundSettings.get_string("picture-uri-dark")
           : this._backgroundSettings.get_string("picture-uri");
       } catch (e) {
-        console.error(`[DM Theme Changer] Error reading desktop wallpaper keys: ${e.message}`);
+        console.error(`[DM Theme Changer Reborn] Error reading desktop wallpaper keys: ${e.message}`);
       }
     } else {
       uri = isDm
@@ -250,7 +250,7 @@ export default class DmThemeChanger extends Extension {
       }
       this._screensaverSettings.set_string("picture-uri", uri);
     } catch (e) {
-      console.error(`[DM Theme Changer] Error syncing lockscreen wallpaper: ${e.message}`);
+      console.error(`[DM Theme Changer Reborn] Error syncing lockscreen wallpaper: ${e.message}`);
     }
   }
 

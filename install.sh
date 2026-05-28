@@ -5,7 +5,7 @@ set -euo pipefail
 UUID="dm-theme-changer-reborn@phenrique-coder.github.com"
 EXTENSION_DIR="$HOME/.local/share/gnome-shell/extensions/$UUID"
 
-echo "=== Building and Installing DM Theme Changer ==="
+echo "=== Building and Installing DM Theme Changer Reborn ==="
 
 # 1. Clean previous build files
 echo "Cleaning old build files..."
