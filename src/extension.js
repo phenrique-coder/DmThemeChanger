@@ -149,6 +149,10 @@ export default class DmThemeChanger extends Extension {
     this._changeGtk3Theme(isDm ? GTK3_THEME_DARK : GTK3_THEME_LIGHT);
 
     // Change shell theme with a 400ms delay to allow the 350ms icon transition to finish completely
+    if (this._sourceIds.shellThemeDelayTimeout) {
+      GLib.source_remove(this._sourceIds.shellThemeDelayTimeout);
+      this._sourceIds.shellThemeDelayTimeout = 0;
+    }
     this._sourceIds.shellThemeDelayTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
       this._changeShellTheme(isDm ? SHELL_THEME_DARK : SHELL_THEME_LIGHT);
       this._sourceIds.shellThemeDelayTimeout = 0;
@@ -156,12 +160,20 @@ export default class DmThemeChanger extends Extension {
     });
 
     //I add delay here to avoid lag
+    if (this._sourceIds.transitionDelayTimeout) {
+      GLib.source_remove(this._sourceIds.transitionDelayTimeout);
+      this._sourceIds.transitionDelayTimeout = 0;
+    }
     this._sourceIds.transitionDelayTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
       if (OPTIMIZE_DARKLIGHT_SWITCH_TRANSITION) this.optimizeTransition.darkModeTransition?.run();
       this._sourceIds.transitionDelayTimeout = 0;
       return GLib.SOURCE_REMOVE;
     });
 
+    if (this._sourceIds.changeIconsDelayTimeout) {
+      GLib.source_remove(this._sourceIds.changeIconsDelayTimeout);
+      this._sourceIds.changeIconsDelayTimeout = 0;
+    }
     this._sourceIds.changeIconsDelayTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
       this._changeCursorTheme(isDm ? CURSOR_THEME_DARK : CURSOR_THEME_LIGHT);
       this._changeIconTheme(isDm ? ICON_THEME_DARK : ICON_THEME_LIGHT);
@@ -641,15 +653,33 @@ export default class DmThemeChanger extends Extension {
   }
 
   _destroyIndicator() {
+    if (this._darkModeMenuItem) {
+      this._darkModeMenuItem.destroy();
+      this._darkModeMenuItem = null;
+    }
+    if (this._lightIcon) {
+      this._lightIcon.destroy();
+      this._lightIcon = null;
+    }
+    if (this._darkIcon) {
+      this._darkIcon.destroy();
+      this._darkIcon = null;
+    }
+    if (this._lightIconBin) {
+      this._lightIconBin.destroy();
+      this._lightIconBin = null;
+    }
+    if (this._darkIconBin) {
+      this._darkIconBin.destroy();
+      this._darkIconBin = null;
+    }
+    if (this._iconContainer) {
+      this._iconContainer.destroy();
+      this._iconContainer = null;
+    }
     if (this._indicator) {
       this._indicator.destroy();
       this._indicator = null;
     }
-    this._darkModeMenuItem = null;
-    this._iconContainer = null;
-    this._lightIcon = null;
-    this._darkIcon = null;
-    this._lightIconBin = null;
-    this._darkIconBin = null;
   }
 }

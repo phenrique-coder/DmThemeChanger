@@ -21,7 +21,7 @@ glib-compile-schemas ./schemas
 echo "Creating build package..."
 mkdir -p "./out/$UUID/schemas"
 cp -r ./src/* "./out/$UUID/"
-cp ./schemas/* "./out/$UUID/schemas/"
+cp ./schemas/*.xml "./out/$UUID/schemas/"
 cp ./metadata.json "./out/$UUID/metadata.json"
 cp ./LICENSE "./out/$UUID/LICENSE"
 
@@ -31,6 +31,7 @@ mkdir -p "$EXTENSION_DIR"
 # Delete existing files in the target directory to ensure clean install
 rm -rf "${EXTENSION_DIR:?}"/*
 cp -r ./out/"$UUID"/* "$EXTENSION_DIR/"
+glib-compile-schemas "$EXTENSION_DIR/schemas"
 
 # 5. Pack zip
 echo "Creating zip package..."
